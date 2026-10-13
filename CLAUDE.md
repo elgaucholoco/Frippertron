@@ -17,3 +17,4 @@ Prochaines étapes :
 L'utilisateur parle français et préfère des retours directs.
 
 Versions : à chaque itération livrée, incrémenter `project(... VERSION x.y.z)` dans `CMakeLists.txt` et ajouter une entrée en tête de `CHANGELOG.md`, puis faire un commit git (`vX.Y.Z — résumé`) et un tag `vX.Y.Z`.
+Publication : zipper les bundles de `build/Frippertron_artefacts/Release/` avec `ditto -c -k --keepParent` (VST3, AU, Standalone), puis `gh release create vX.Y.Z <zips>` (`gh` est dans `~/.local/bin`). Les notes de version reprennent l'entrée du CHANGELOG et la procédure d'installation (`xattr -cr`, le plugin n'étant pas notarisé).
