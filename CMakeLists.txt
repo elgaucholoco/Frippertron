@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
 
-project(Frippertron VERSION 2.0.0)   # à incrémenter à chaque version, voir CHANGELOG.md
+project(Frippertron VERSION 2.1.0)   # à incrémenter à chaque version, voir CHANGELOG.md
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

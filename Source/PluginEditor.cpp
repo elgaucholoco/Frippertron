@@ -23,6 +23,8 @@ TapeLookAndFeel::TapeLookAndFeel()
     setColour (juce::Label::textColourId, colours::cream);
     setColour (juce::TextButton::buttonColourId, colours::panel.brighter (0.15f));
     setColour (juce::TextButton::textColourOffId, colours::cream);
+    setColour (juce::TextButton::buttonOnColourId, colours::cream.darker (0.1f));
+    setColour (juce::TextButton::textColourOnId, colours::panel);
     setColour (juce::ToggleButton::tickColourId, colours::red);
     setColour (juce::ComboBox::backgroundColourId, colours::panel.brighter (0.15f));
     setColour (juce::ComboBox::textColourId, colours::cream);
@@ -144,6 +146,18 @@ FrippertronEditor::FrippertronEditor (FrippertronProcessor& p)
     clearButton.onClick = [this] { proc.requestClear(); };
     addAndMakeVisible (clearButton);
 
+    // ── 1 REVOX / 2 REVOX ──
+    oneDeckButton.setConnectedEdges (juce::Button::ConnectedOnRight);
+    twoDeckButton.setConnectedEdges (juce::Button::ConnectedOnLeft);
+    for (auto* b : { &oneDeckButton, &twoDeckButton })
+        addAndMakeVisible (b);
+    decksAttachment = std::make_unique<juce::ParameterAttachment> (
+        *proc.apvts.getParameter ("decks"),
+        [this] (float v) { singleDeck = v < 0.5f; updateDeckView(); });
+    oneDeckButton.onClick = [this] { decksAttachment->setValueAsCompleteGesture (0.0f); };
+    twoDeckButton.onClick = [this] { decksAttachment->setValueAsCompleteGesture (1.0f); };
+    decksAttachment->sendInitialUpdate();
+
     updateSyncView();
     setSize (880, 540);
     startTimerHz (30);
@@ -183,6 +197,24 @@ void FrippertronEditor::updateSyncView()
         ui.length.slider.setVisible (sync);
         ui.length.label.setVisible (sync);
     }
+}
+
+void FrippertronEditor::updateDeckView()
+{
+    oneDeckButton.setToggleState (singleDeck, juce::dontSendNotification);
+    twoDeckButton.setToggleState (! singleDeck, juce::dontSendNotification);
+
+    // 1 REVOX : la durée et la réinjection de B suivent A ; son pan reste réglable
+    auto& b = lineUI[1];
+    for (juce::Component* c : { (juce::Component*) &b.time.slider, (juce::Component*) &b.time.label,
+                                (juce::Component*) &b.length.slider, (juce::Component*) &b.length.label,
+                                (juce::Component*) &b.feedback.slider, (juce::Component*) &b.feedback.label,
+                                (juce::Component*) &b.sync })
+    {
+        c->setEnabled (! singleDeck);
+        c->setAlpha (singleDeck ? 0.3f : 1.0f);
+    }
+    repaint();
 }
 
 void FrippertronEditor::timerCallback()
@@ -334,8 +366,8 @@ void FrippertronEditor::paint (juce::Graphics& g)
         g.fillRoundedRectangle (ui.panel.toFloat(), 6.0f);
         g.setColour (colours::line (l));
         g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
-        g.drawText (l == 0 ? "LINE A" : "LINE B", ui.panel.reduced (10, 4).removeFromTop (20),
-                    juce::Justification::centredLeft);
+        g.drawText (l == 0 ? "LINE A" : (singleDeck ? "LINE B  (suit A)" : "LINE B"),
+                    ui.panel.reduced (10, 4).removeFromTop (20), juce::Justification::centredLeft);
     }
 }
 
@@ -357,6 +389,12 @@ void FrippertronEditor::resized()
     presetBox.setBounds (top.removeFromRight (150).reduced (0, 9));
 
     deckArea = area.removeFromTop (150).toFloat();
+    {
+        // sélecteur sous le métronome, au centre de l'affichage
+        auto sel = juce::Rectangle<int> (0, 0, 170, 22).withCentre ({ (int) deckArea.getCentreX(), (int) deckArea.getY() + 106 });
+        oneDeckButton.setBounds (sel.removeFromLeft (85));
+        twoDeckButton.setBounds (sel);
+    }
     area.removeFromTop (10);
 
     auto layoutRow = [] (juce::Rectangle<int> r, std::initializer_list<Knob*> knobs)

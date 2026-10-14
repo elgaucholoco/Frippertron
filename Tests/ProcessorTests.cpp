@@ -105,11 +105,13 @@ int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI juce;
 
-    // FrippertronTests --snapshot fichier.png : capture de l'interface, sans lancer les tests
+    // FrippertronTests --snapshot fichier.png [single] : capture de l'interface, sans lancer les tests
     if (argc > 2 && juce::String (argv[1]) == "--snapshot")
     {
         Rig rig (true);
         rig.set ("b_sync", 1);
+        if (argc > 3 && juce::String (argv[3]) == "single")
+            rig.set ("decks", 0);
         rig.run (1.0, [] (int i) { const float v = std::sin (i * 0.03f) * 0.5f; return std::pair<float, float> { v, v }; });
         std::unique_ptr<juce::AudioProcessorEditor> editor (rig.proc.createEditor());
         auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, 2.0f);
@@ -147,6 +149,19 @@ int main (int argc, char** argv)
         rig.run (7.0, impulse (true, true));
         check (rig.peakAround (4.0) < 0.01f && rig.peakAround (4.0, false) < 0.01f, "A reste muette");
         check (rig.peakAround (6.0, false) > 0.5f, "B reçoit la somme mono");
+    }
+
+    std::printf ("1 REVOX : la ligne B suit la durée de A\n");
+    {
+        Rig rig;
+        rig.set ("decks", 0); rig.set ("routing", 3);
+        rig.set ("b_time", 6.0f); rig.set ("b_feedback", 0.0f);   // ignorés en 1 REVOX
+        rig.proc.prepareToPlay (sr, block);
+        rig.run (9.0, impulse (true, false));
+        check (rig.peakAround (4.0, false) > 0.2f, "écho de B à 4 s, comme A");
+        check (rig.peakAround (6.0, false) < 0.01f, "rien à 6 s");
+        check (rig.peakAround (8.0, false) > 0.05f, "B réinjecte avec le feedback de A (second passage à 8 s)");
+        check (std::abs (rig.proc.getLoopSeconds (1) - 4.0f) < 0.001f, "durée affichée de B : 4.00 s");
     }
 
     std::printf ("Réinjection : les passages suivants décroissent\n");
@@ -238,6 +253,8 @@ int main (int argc, char** argv)
         rig.proc.setCurrentProgram (3);     // Polymeter 4:5
         auto get = [&] (const char* id) { auto* p = rig.proc.apvts.getParameter (id); return p->convertFrom0to1 (p->getValue()); };
         check (get ("a_sync") > 0.5f && (int) get ("a_length") == 5 && (int) get ("b_length") == 6, "Polymeter 4:5 : A 4 mesures, B 5 mesures");
+        rig.proc.setCurrentProgram (1);     // Classic Revox
+        check ((int) get ("decks") == 0, "Classic Revox : 1 REVOX");
         rig.set ("hold", 1);
         rig.proc.setCurrentProgram (0);
         check (get ("a_sync") < 0.5f && std::abs (get ("a_time") - 4.0f) < 0.001f, "Init remet les valeurs par défaut");

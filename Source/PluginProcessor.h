@@ -98,6 +98,9 @@ private:
     };
 
     void readHostPosition();
+    // 1 REVOX : la ligne B suit la durée et la réinjection de A (une seule machine, en stéréo)
+    bool isSingleDeck() const noexcept { return pDecks->load() < 0.5f; }
+    int timingLine (int line) const noexcept { return line == 1 && isSingleDeck() ? 0 : line; }
     double computeLoopSeconds (int line) const;
     double motionCycleSeconds (int line) const;   // 0 si pan automatique coupé
     float readCubic (const float* buf, double pos) const noexcept;
@@ -132,7 +135,7 @@ private:
 
     // pointeurs paramètres globaux
     std::atomic<float> *pTone, *pSat, *pWow, *pFlutter, *pHiss, *pInput, *pMix, *pOut,
-                       *pHold, *pRehearse, *pErase, *pRouting;
+                       *pHold, *pRehearse, *pErase, *pRouting, *pDecks;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FrippertronProcessor)
 };

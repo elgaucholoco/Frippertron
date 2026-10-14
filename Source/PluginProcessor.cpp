@@ -6,7 +6,8 @@ namespace ids
     // globaux
     static const juce::String tone = "tone", sat = "saturation", wow = "wow", flutter = "flutter",
                               hiss = "hiss", input = "input", mix = "mix", out = "output",
-                              hold = "hold", rehearse = "rehearse", erase = "erase", routing = "routing";
+                              hold = "hold", rehearse = "rehearse", erase = "erase", routing = "routing",
+                              decks = "decks";
 
     // par ligne : préfixe « a_ » ou « b_ »
     static const juce::String time = "time", sync = "sync", length = "length",
@@ -45,7 +46,8 @@ static const std::vector<Preset>& factoryPresets()
 {
     static const std::vector<Preset> presets {
         { "Init", {} },
-        { "Classic Revox",     { { "routing", 1 }, { "a_time", 4.0f }, { "a_feedback", 0.9f }, { "a_pan", 0.0f },
+        { "Classic Revox",     { { "decks", 0 }, { "a_time", 4.0f }, { "a_feedback", 0.9f },
+                                 { "a_pan", -1.0f }, { "b_pan", 1.0f },
                                  { "tone", 6000.0f }, { "wow", 0.3f } } },
         { "Two Revox Drift",   { { "routing", 3 }, { "a_time", 4.0f }, { "b_time", 5.3f },
                                  { "a_pan", -0.8f }, { "b_pan", 0.8f }, { "a_feedback", 0.88f }, { "b_feedback", 0.88f } } },
@@ -121,6 +123,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout FrippertronProcessor::create
     l.add (std::make_unique<AudioParameterFloat>  (ParameterID { ids::mix, v },      "Mix",        NormalisableRange<float> (0.0f, 1.0f), 0.5f, pct));
     l.add (std::make_unique<AudioParameterFloat>  (ParameterID { ids::out, v },      "Output",     NormalisableRange<float> (-24.0f, 6.0f), 0.0f, db));
     l.add (std::make_unique<AudioParameterChoice> (ParameterID { ids::routing, v },  "Routing",    routingNames, 0));
+    l.add (std::make_unique<AudioParameterChoice> (ParameterID { ids::decks, v },    "Decks",      StringArray { "1 Revox", "2 Revox" }, 1));
     l.add (std::make_unique<AudioParameterBool>   (ParameterID { ids::hold, v },     "Hold", false));
     l.add (std::make_unique<AudioParameterBool>   (ParameterID { ids::rehearse, v }, "Rehearse", false));
     l.add (std::make_unique<AudioParameterBool>   (ParameterID { ids::erase, v },    "Erase", false));
@@ -154,6 +157,7 @@ FrippertronProcessor::FrippertronProcessor()
     pHold     = apvts.getRawParameterValue (ids::hold);
     pRehearse = apvts.getRawParameterValue (ids::rehearse);
     pErase    = apvts.getRawParameterValue (ids::erase);
+    pDecks    = apvts.getRawParameterValue (ids::decks);
 }
 
 bool FrippertronProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -218,7 +222,7 @@ void FrippertronProcessor::prepareToPlay (double sampleRate, int)
 
         for (auto* s : { &line.feedbackS, &line.inLS, &line.inRS })
             s->reset (sr, 0.05);
-        line.feedbackS.setCurrentAndTargetValue (lp[l].feedback->load());
+        line.feedbackS.setCurrentAndTargetValue (lp[timingLine (l)].feedback->load());
         const int route = juce::jlimit (0, 3, (int) pRouting->load());
         line.inLS.setCurrentAndTargetValue (routeGains[route][l][0]);
         line.inRS.setCurrentAndTargetValue (routeGains[route][l][1]);
@@ -271,7 +275,7 @@ void FrippertronProcessor::readHostPosition()
 
 double FrippertronProcessor::computeLoopSeconds (int line) const
 {
-    const auto& p = lp[line];
+    const auto& p = lp[timingLine (line)];
     if (p.sync->load() < 0.5f || ! hostHasTempo.load())
         return p.time->load();
 
@@ -368,7 +372,7 @@ void FrippertronProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         lineView[l].seconds.store ((float) loopSecs);
         targetDelay[l] = juce::jlimit (16.0, maxDelay, loopSecs * sr);
 
-        line.feedbackS.setTargetValue (lp[l].feedback->load());
+        line.feedbackS.setTargetValue (lp[timingLine (l)].feedback->load());
         line.inLS.setTargetValue (routeGains[route][l][0]);
         line.inRS.setTargetValue (routeGains[route][l][1]);
 

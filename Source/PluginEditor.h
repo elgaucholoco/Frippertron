@@ -41,6 +41,7 @@ private:
 
     void setupKnob (Knob&, const juce::String& paramId, const juce::String& text, juce::Colour);
     void updateSyncView();
+    void updateDeckView();
 
     FrippertronProcessor& proc;
     TapeLookAndFeel lnf;
@@ -49,6 +50,9 @@ private:
     juce::ToggleButton holdButton { "HOLD" }, rehearseButton { "REHEARSE" };
     juce::TextButton   clearButton { "ERASE" };
     juce::ComboBox     presetBox, routingBox;
+    juce::TextButton   oneDeckButton { "1 REVOX" }, twoDeckButton { "2 REVOX" };
+    std::unique_ptr<juce::ParameterAttachment> decksAttachment;
+    bool singleDeck = false;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> holdAttachment, rehearseAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> routingAttachment;
 
