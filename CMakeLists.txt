@@ -4,10 +4,24 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
 
-project(Frippertron VERSION 2.1.0)   # à incrémenter à chaque version, voir CHANGELOG.md
+project(Frippertron VERSION 2.2.0)   # à incrémenter à chaque version, voir CHANGELOG.md
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Le compilateur Microsoft doit lire les sources en UTF-8 (accents des commentaires et de l'interface)
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
+# Formats : l'AU n'existe que sur Mac
+set(FRIPPERTRON_FORMATS VST3 Standalone)
+if(APPLE)
+    list(APPEND FRIPPERTRON_FORMATS AU)
+endif()
+
+# Copie du plugin dans le dossier système après compilation (désactivée sur GitHub Actions)
+option(FRIPPERTRON_COPY_PLUGIN "Copier le plugin dans le dossier des plugins après compilation" ON)
 
 # JUCE : soit le dossier JUCE/ à côté de ce fichier, soit téléchargé automatiquement
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/JUCE/CMakeLists.txt")
@@ -26,12 +40,12 @@ juce_add_plugin(Frippertron
     BUNDLE_ID "ch.carlos.frippertron"
     PLUGIN_MANUFACTURER_CODE Crls
     PLUGIN_CODE Frpt
-    FORMATS VST3 AU Standalone
+    FORMATS ${FRIPPERTRON_FORMATS}
     PRODUCT_NAME "Frippertron"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
-    COPY_PLUGIN_AFTER_BUILD TRUE        # copie dans ~/Library/Audio/Plug-Ins/
+    COPY_PLUGIN_AFTER_BUILD ${FRIPPERTRON_COPY_PLUGIN}   # Mac : ~/Library/Audio/Plug-Ins/
     VST3_CATEGORIES Fx Delay
     AU_MAIN_TYPE kAudioUnitType_Effect)
 
