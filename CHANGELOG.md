@@ -7,6 +7,32 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 
 Le numéro se change dans `CMakeLists.txt` (`project(Frippertron VERSION …)`). Il s'affiche sous le titre du plugin.
 
+## [2.0.0] — 2026-10-14
+
+Version majeure : les paramètres ont été renommés, les projets et presets de la v1 ne sont pas relus.
+
+### Ajouté
+- **Deux lignes de bande indépendantes (A et B)**, chacune avec sa durée (ou sa synchro au tempo), sa réinjection, ses instabilités de vitesse et sa place dans l'image stéréo.
+- **Routage de l'entrée** : Stereo (L → A, R → B), Mono → A, Mono → B, Mono → A+B.
+- **Pan Motion** : pan automatique par ligne, calé sur le tempo (1 à 32 mesures).
+- **REHEARSE** : jouer sans enregistrer.
+- **Hiss** : souffle de bande qui entre dans la boucle.
+- **ERASE** devient un paramètre automatisable (pilotable en MIDI).
+- **Presets d'usine** : Init, Classic Revox, Two Revox Drift, Polymeter 4:5, Swirl, Worn Tape, Long Ambient.
+- **Métronome visuel** calé sur le logiciel audio.
+- Loop Length : 5 et 7 mesures en plus.
+- Tests hors ligne (`-DFRIPPERTRON_TESTS=ON`) et capture de l'interface.
+
+### Modifié
+- Boucles jusqu'à **60 s** (au lieu de 30).
+- Interface agrandie (880 × 540), un panneau par ligne, arc du Pan centré.
+
+### Supprimé
+- **Spread** : remplacé par les deux lignes, plus riches.
+
+### Corrigé
+- Le point médian sous le titre s'affichait « Â· ».
+
 ## [1.1.0] — 2026-10-13
 
 ### Ajouté

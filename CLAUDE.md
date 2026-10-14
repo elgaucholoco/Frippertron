@@ -8,11 +8,14 @@ Prochaines étapes :
 1. Vérifier les outils de compilation (`xcode-select -p`, `cmake --version`) et installer ce qui manque : `xcode-select --install`, Homebrew, `brew install cmake`. L'utilisateur saisit lui-même son mot de passe.
 2. Compiler avec `cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j8`. Le plugin est copié automatiquement dans `~/Library/Audio/Plug-Ins/`.
 3. Valider l'AU : `auval -v aufx Frpt Crls`.
-4. Ajuster le son avec l'utilisateur pendant qu'il écoute dans son logiciel audio. Pour cela, modifier les constantes dans `processBlock` :
+4. Ajuster le son avec l'utilisateur pendant qu'il écoute dans son logiciel audio. Pour cela, modifier les constantes dans `processBlock` (puis relancer les tests, voir README) :
    - profondeur du wow et du flutter ;
    - fréquences des oscillateurs ;
    - plage de la saturation (`drive`) ;
-   - durée de glissement du Loop Time (`glideA`).
+   - durée de glissement du Loop Time (`glideA`) ;
+   - niveau du souffle (`hissAmp`).
+
+Avant chaque livraison : tests (`-DFRIPPERTRON_TESTS=ON`, cible `FrippertronTests`) tous verts, `auval` OK, capture `--snapshot` vérifiée visuellement. Les chaînes non ASCII de l'interface passent par `juce::String::fromUTF8`.
 
 L'utilisateur parle français et préfère des retours directs.
 

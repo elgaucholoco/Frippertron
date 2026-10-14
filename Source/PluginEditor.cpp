@@ -6,9 +6,12 @@ namespace colours
     static const juce::Colour metal   { 0xff8a8279 };
     static const juce::Colour cream   { 0xffe9dfc8 };
     static const juce::Colour amber   { 0xffe0a040 };
+    static const juce::Colour teal    { 0xff6fb3a8 };
     static const juce::Colour tape    { 0xff5a3a22 };
     static const juce::Colour dim     { 0xff6b645b };
     static const juce::Colour red     { 0xffc8452f };
+
+    static juce::Colour line (int l) { return l == 0 ? amber : teal; }   // ligne A, ligne B
 }
 
 //==============================================================================
@@ -16,13 +19,23 @@ TapeLookAndFeel::TapeLookAndFeel()
 {
     setColour (juce::Slider::textBoxTextColourId, colours::cream);
     setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    setColour (juce::Slider::rotarySliderFillColourId, colours::amber);
     setColour (juce::Label::textColourId, colours::cream);
     setColour (juce::TextButton::buttonColourId, colours::panel.brighter (0.15f));
     setColour (juce::TextButton::textColourOffId, colours::cream);
+    setColour (juce::ToggleButton::tickColourId, colours::red);
+    setColour (juce::ComboBox::backgroundColourId, colours::panel.brighter (0.15f));
+    setColour (juce::ComboBox::textColourId, colours::cream);
+    setColour (juce::ComboBox::outlineColourId, colours::dim);
+    setColour (juce::ComboBox::arrowColourId, colours::cream);
+    setColour (juce::PopupMenu::backgroundColourId, colours::panel.brighter (0.1f));
+    setColour (juce::PopupMenu::textColourId, colours::cream);
+    setColour (juce::PopupMenu::highlightedBackgroundColourId, colours::amber.withAlpha (0.35f));
+    setColour (juce::PopupMenu::highlightedTextColourId, colours::cream);
 }
 
 void TapeLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w, int h, float pos,
-                                        float start, float end, juce::Slider&)
+                                        float start, float end, juce::Slider& s)
 {
     auto b = juce::Rectangle<int> (x, y, w, h).toFloat().reduced (6.0f);
     const float r = juce::jmin (b.getWidth(), b.getHeight()) * 0.5f;
@@ -30,12 +43,16 @@ void TapeLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w, 
     const float angle = start + pos * (end - start);
 
     // piste
+    // réglage bipolaire (pan) : l'arc part du centre
+    const bool bipolar = s.getMinimum() < 0.0 && juce::approximatelyEqual (s.getMinimum(), -s.getMaximum());
+    const float from = bipolar ? (start + end) * 0.5f : start;
+
     juce::Path track, value;
     track.addCentredArc (c.x, c.y, r, r, 0.0f, start, end, true);
-    value.addCentredArc (c.x, c.y, r, r, 0.0f, start, angle, true);
+    value.addCentredArc (c.x, c.y, r, r, 0.0f, juce::jmin (from, angle), juce::jmax (from, angle), true);
     g.setColour (colours::dim.withAlpha (0.5f));
     g.strokePath (track, juce::PathStrokeType (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-    g.setColour (colours::amber);
+    g.setColour (s.findColour (juce::Slider::rotarySliderFillColourId));
     g.strokePath (value, juce::PathStrokeType (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
     // bouton façon Revox
@@ -52,15 +69,21 @@ void TapeLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w, 
     g.fillPath (pointer, juce::AffineTransform::rotation (angle).translated (c));
 }
 
+juce::Font TapeLookAndFeel::getTextButtonFont (juce::TextButton&, int)
+{
+    return juce::FontOptions (12.0f, juce::Font::bold);
+}
+
 void TapeLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& b, bool over, bool)
 {
     auto r = b.getLocalBounds().toFloat().reduced (2.0f);
     const bool on = b.getToggleState();
-    g.setColour (on ? colours::red : colours::panel.brighter (over ? 0.25f : 0.15f));
+    g.setColour (on ? b.findColour (juce::ToggleButton::tickColourId) : colours::panel.brighter (over ? 0.25f : 0.15f));
     g.fillRoundedRectangle (r, 4.0f);
     g.setColour (on ? colours::cream : colours::dim);
     g.drawRoundedRectangle (r, 4.0f, 1.0f);
-    g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+    g.setColour (on ? colours::panel : colours::cream);
+    g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
     g.drawText (b.getButtonText(), r, juce::Justification::centred);
 }
 
@@ -70,30 +93,59 @@ FrippertronEditor::FrippertronEditor (FrippertronProcessor& p)
 {
     setLookAndFeel (&lnf);
 
-    const std::array<std::pair<const char*, const char*>, 10> defs {{
-        { "time", "LOOP TIME" }, { "feedback", "FEEDBACK" }, { "input", "REC LEVEL" },
-        { "mix", "MIX" },        { "output", "OUTPUT" },
-        { "tone", "TAPE TONE" }, { "saturation", "SATURATION" }, { "wow", "WOW" },
-        { "flutter", "FLUTTER" },{ "spread", "SPREAD" }
-    }};
+    // ── les deux lignes ──
+    for (int l = 0; l < FrippertronProcessor::numLines; ++l)
+    {
+        auto& ui = lineUI[(size_t) l];
+        const juce::String pre = l == 0 ? "a_" : "b_";
+        const auto col = colours::line (l);
+        setupKnob (ui.time,     pre + "time",     "LOOP TIME",   col);
+        setupKnob (ui.length,   pre + "length",   "LOOP LENGTH", col);
+        setupKnob (ui.feedback, pre + "feedback", "FEEDBACK",    col);
+        setupKnob (ui.pan,      pre + "pan",      "PAN",         col);
+        setupKnob (ui.motion,   pre + "motion",   "PAN MOTION",  col);
 
-    for (size_t i = 0; i < knobs.size(); ++i)
-        setupKnob (knobs[i], defs[i].first, defs[i].second);
-    setupKnob (lengthKnob, "length", "LOOP LENGTH");
+        ui.sync.setColour (juce::ToggleButton::tickColourId, col);
+        addAndMakeVisible (ui.sync);
+        ui.syncAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+            proc.apvts, pre + "sync", ui.sync);
+    }
+
+    // ── bande et sortie ──
+    const std::array<std::pair<const char*, const char*>, 8> globals {{
+        { "input", "REC LEVEL" }, { "mix", "MIX" },       { "output", "OUTPUT" },   { "tone", "TAPE TONE" },
+        { "saturation", "SATURATION" }, { "wow", "WOW" }, { "flutter", "FLUTTER" }, { "hiss", "HISS" }
+    }};
+    for (size_t i = 0; i < globalKnobs.size(); ++i)
+        setupKnob (globalKnobs[i], globals[i].first, globals[i].second, colours::cream.darker (0.15f));
+
+    // ── en-tête ──
+    for (int i = 0; i < proc.getNumPrograms(); ++i)
+        presetBox.addItem (proc.getProgramName (i), i + 1);
+    presetBox.setSelectedId (proc.getCurrentProgram() + 1, juce::dontSendNotification);
+    presetBox.onChange = [this] { proc.setCurrentProgram (presetBox.getSelectedId() - 1); };
+    addAndMakeVisible (presetBox);
+
+    if (auto* routing = dynamic_cast<juce::AudioParameterChoice*> (proc.apvts.getParameter ("routing")))
+        routingBox.addItemList (routing->choices, 1);
+    addAndMakeVisible (routingBox);
+    routingAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
+        proc.apvts, "routing", routingBox);
+
+    rehearseButton.setColour (juce::ToggleButton::tickColourId, colours::amber);
+    addAndMakeVisible (rehearseButton);
+    rehearseAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        proc.apvts, "rehearse", rehearseButton);
 
     addAndMakeVisible (holdButton);
     holdAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         proc.apvts, "hold", holdButton);
 
-    addAndMakeVisible (syncButton);
-    syncAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-        proc.apvts, "sync", syncButton);
-    updateSyncView();
-
     clearButton.onClick = [this] { proc.requestClear(); };
     addAndMakeVisible (clearButton);
 
-    setSize (720, 480);
+    updateSyncView();
+    setSize (880, 540);
     startTimerHz (30);
 }
 
@@ -103,17 +155,18 @@ FrippertronEditor::~FrippertronEditor()
     setLookAndFeel (nullptr);
 }
 
-void FrippertronEditor::setupKnob (Knob& k, const juce::String& paramId, const juce::String& text)
+void FrippertronEditor::setupKnob (Knob& k, const juce::String& paramId, const juce::String& text, juce::Colour col)
 {
     k.slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     k.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 18);
     k.slider.setRotaryParameters (juce::MathConstants<float>::pi * 1.2f,
                                   juce::MathConstants<float>::pi * 2.8f, true);
+    k.slider.setColour (juce::Slider::rotarySliderFillColourId, col);
     addAndMakeVisible (k.slider);
 
     k.label.setText (text, juce::dontSendNotification);
     k.label.setJustificationType (juce::Justification::centred);
-    k.label.setFont (juce::FontOptions (11.5f, juce::Font::bold));
+    k.label.setFont (juce::FontOptions (11.0f, juce::Font::bold));
     addAndMakeVisible (k.label);
 
     k.attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
@@ -122,19 +175,28 @@ void FrippertronEditor::setupKnob (Knob& k, const juce::String& paramId, const j
 
 void FrippertronEditor::updateSyncView()
 {
-    const bool sync = syncButton.getToggleState();
-    knobs[0].slider.setVisible (! sync);
-    knobs[0].label.setVisible (! sync);
-    lengthKnob.slider.setVisible (sync);
-    lengthKnob.label.setVisible (sync);
+    for (auto& ui : lineUI)
+    {
+        const bool sync = ui.sync.getToggleState();
+        ui.time.slider.setVisible (! sync);
+        ui.time.label.setVisible (! sync);
+        ui.length.slider.setVisible (sync);
+        ui.length.label.setVisible (sync);
+    }
 }
 
 void FrippertronEditor::timerCallback()
 {
-    if (lengthKnob.slider.isVisible() != syncButton.getToggleState())
-        updateSyncView();
+    for (auto& ui : lineUI)
+        if (ui.length.slider.isVisible() != ui.sync.getToggleState())
+            updateSyncView();
 
-    phase = proc.getLoopPhase();
+    // le preset peut aussi être changé par l'hôte
+    if (presetBox.getSelectedId() != proc.getCurrentProgram() + 1)
+        presetBox.setSelectedId (proc.getCurrentProgram() + 1, juce::dontSendNotification);
+
+    for (int l = 0; l < FrippertronProcessor::numLines; ++l)
+        phase[l] = proc.getLoopPhase (l);
     level = proc.getLoopLevel();
     reelAngle += 0.06f;   // les bobines tournent toujours : la bande défile, même en HOLD
     repaint (deckArea.toNearestInt());
@@ -171,10 +233,10 @@ void FrippertronEditor::paint (juce::Graphics& g)
     // ── titre ──
     g.setColour (colours::cream);
     g.setFont (juce::FontOptions (22.0f, juce::Font::bold));
-    g.drawText ("FRIPPERTRON", 20, 10, 300, 28, juce::Justification::centredLeft);
+    g.drawText ("FRIPPERTRON", 16, 10, 220, 28, juce::Justification::centredLeft);
     g.setColour (colours::dim);
     g.setFont (juce::FontOptions (11.0f));
-    g.drawText ("two-deck tape loop  ·  v" JucePlugin_VersionString, 20, 34, 300, 14, juce::Justification::centredLeft);
+    g.drawText (juce::String::fromUTF8 ("two-deck tape loop  ·  v" JucePlugin_VersionString), 16, 34, 220, 14, juce::Justification::centredLeft);
 
     // ── les deux magnétophones ──
     auto d = deckArea;
@@ -183,8 +245,8 @@ void FrippertronEditor::paint (juce::Graphics& g)
 
     const float reelR = d.getHeight() * 0.36f;
     const float cy = d.getY() + d.getHeight() * 0.45f;
-    const juce::Point<float> deckA (d.getX() + d.getWidth() * 0.14f, cy),
-                             deckB (d.getRight() - d.getWidth() * 0.14f, cy);
+    const juce::Point<float> deckA (d.getX() + d.getWidth() * 0.12f, cy),
+                             deckB (d.getRight() - d.getWidth() * 0.12f, cy);
 
     // la bande : de la machine A (enregistrement) à la machine B (lecture), et retour
     const float headY = d.getBottom() - 16.0f;
@@ -202,76 +264,129 @@ void FrippertronEditor::paint (juce::Graphics& g)
     // têtes
     g.setColour (colours::red);
     g.fillRoundedRectangle (recHead.x - 8, recHead.y - 7, 16, 14, 2.0f);
-    g.setColour (colours::amber);
+    g.setColour (colours::cream.darker (0.2f));
     g.fillRoundedRectangle (playHead.x - 8, playHead.y - 7, 16, 14, 2.0f);
     g.setColour (colours::dim);
     g.setFont (juce::FontOptions (10.0f));
     g.drawText ("REC", (int) recHead.x - 20, (int) recHead.y - 22, 40, 12, juce::Justification::centred);
     g.drawText ("PLAY", (int) playHead.x - 20, (int) playHead.y - 22, 40, 12, juce::Justification::centred);
 
-    // position dans la boucle : un point de son qui voyage de REC à PLAY
-    const auto blip = recHead + (playHead - recHead) * phase;
-    const float glow = juce::jlimit (0.15f, 1.0f, level * 6.0f);
-    g.setColour (colours::amber.withAlpha (glow));
-    g.fillEllipse (blip.x - 5, blip.y - 5, 10, 10);
+    // position dans chaque boucle : un point de son qui voyage de REC à PLAY
+    const float glow = juce::jlimit (0.25f, 1.0f, level * 6.0f);
+    for (int l = 0; l < FrippertronProcessor::numLines; ++l)
+    {
+        const auto blip = recHead + (playHead - recHead) * phase[l];
+        const float dy = l == 0 ? -5.0f : 5.0f;
+        g.setColour (colours::line (l).withAlpha (glow));
+        g.fillEllipse (blip.x - 5, blip.y - 5 + dy, 10, 10);
+    }
 
     drawReel (g, deckA, reelR, reelAngle, 0.75f);
     drawReel (g, deckB, reelR, reelAngle * 1.3f, 0.35f);
 
-    // indicateur de niveau de la bande
-    auto meter = juce::Rectangle<float> (d.getCentreX() - 80, d.getY() + 18, 160, 6);
+    // indicateur de niveau des bandes
+    auto meter = juce::Rectangle<float> (d.getCentreX() - 80, d.getY() + 14, 160, 6);
     g.setColour (colours::dim.withAlpha (0.4f));
     g.fillRoundedRectangle (meter, 3.0f);
-    g.setColour (colours::amber);
+    g.setColour (colours::cream.darker (0.1f));
     g.fillRoundedRectangle (meter.withWidth (meter.getWidth() * juce::jlimit (0.0f, 1.0f, level * 4.0f)), 3.0f);
     g.setColour (colours::dim);
     g.drawText ("LOOP LEVEL", meter.translated (0, 8).withHeight (14).toNearestInt(), juce::Justification::centred);
 
-    // tempo de l'hôte et durée réelle de la boucle
-    const bool sync = syncButton.getToggleState();
-    juce::String info;
-    if (sync && ! proc.hasHostTempo())
-        info = "SYNC : pas de tempo hôte";
-    else
-    {
-        if (sync)
-            info << juce::String (proc.getHostBpm(), 1) << " BPM  " << proc.getTimeSigNum()
-                 << "/" << proc.getTimeSigDen() << "  ·  ";
-        info << juce::String (proc.getLoopSeconds(), 2) << " s";
-    }
-    g.setColour (sync ? colours::amber : colours::dim);
+    // tempo de l'hôte
+    auto textRow = [&] (int dyText) { return meter.translated (-60, (float) dyText).withWidth (meter.getWidth() + 120)
+                                                    .withHeight (14).toNearestInt(); };
     g.setFont (juce::FontOptions (11.0f));
-    g.drawText (info, meter.translated (-40, 28).withWidth (meter.getWidth() + 80).withHeight (14).toNearestInt(),
-                juce::Justification::centred);
+    g.setColour (colours::cream.darker (0.2f));
+    g.drawText (proc.hasHostTempo() ? juce::String (proc.getHostBpm(), 1) + " BPM  " + juce::String (proc.getTimeSigNum())
+                                          + "/" + juce::String (proc.getTimeSigDen())
+                                    : juce::String::fromUTF8 ("pas de tempo hôte"),
+                textRow (26), juce::Justification::centred);
+
+    // durée réelle de chaque boucle
+    auto durations = textRow (42);
+    for (int l = 0; l < FrippertronProcessor::numLines; ++l)
+    {
+        auto half = l == 0 ? durations.removeFromLeft (durations.getWidth() / 2) : durations;
+        g.setColour (colours::line (l));
+        g.drawText ((l == 0 ? "A  " : "B  ") + juce::String (proc.getLoopSeconds (l), 2) + " s",
+                    half.reduced (6, 0), l == 0 ? juce::Justification::centredRight : juce::Justification::centredLeft);
+    }
+
+    // métronome visuel : un voyant par temps, calé sur l'hôte quand il joue
+    const int beats = juce::jlimit (1, 12, proc.getTimeSigNum());
+    const int lit = proc.isHostPlaying() ? (int) std::floor (proc.getBeatInBar()) : -1;
+    const float ledSize = 8.0f, ledGap = 6.0f;
+    const float ledsW = beats * ledSize + (beats - 1) * ledGap;
+    float lx = d.getCentreX() - ledsW * 0.5f;
+    const float ly = meter.getY() + 64.0f;
+    for (int b = 0; b < beats; ++b, lx += ledSize + ledGap)
+    {
+        g.setColour (b == lit ? (b == 0 ? colours::red : colours::amber) : colours::dim.withAlpha (0.4f));
+        g.fillEllipse (lx, ly, ledSize, ledSize);
+    }
+
+    // ── panneaux des deux lignes ──
+    for (int l = 0; l < FrippertronProcessor::numLines; ++l)
+    {
+        const auto& ui = lineUI[(size_t) l];
+        g.setColour (juce::Colours::black.withAlpha (0.2f));
+        g.fillRoundedRectangle (ui.panel.toFloat(), 6.0f);
+        g.setColour (colours::line (l));
+        g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+        g.drawText (l == 0 ? "LINE A" : "LINE B", ui.panel.reduced (10, 4).removeFromTop (20),
+                    juce::Justification::centredLeft);
+    }
 }
 
 void FrippertronEditor::resized()
 {
     auto area = getLocalBounds().reduced (16);
+
+    // en-tête : titre, preset, routage, REHEARSE, HOLD, ERASE
     auto top = area.removeFromTop (44);
-    clearButton.setBounds (top.removeFromRight (80).reduced (0, 8));
+    top.removeFromLeft (220);
+    clearButton.setBounds (top.removeFromRight (74).reduced (0, 8));
+    top.removeFromRight (6);
+    holdButton.setBounds (top.removeFromRight (74).reduced (0, 8));
+    top.removeFromRight (6);
+    rehearseButton.setBounds (top.removeFromRight (96).reduced (0, 8));
+    top.removeFromRight (14);
+    routingBox.setBounds (top.removeFromRight (150).reduced (0, 9));
     top.removeFromRight (8);
-    holdButton.setBounds (top.removeFromRight (80).reduced (0, 8));
-    top.removeFromRight (8);
-    syncButton.setBounds (top.removeFromRight (80).reduced (0, 8));
+    presetBox.setBounds (top.removeFromRight (150).reduced (0, 9));
 
-    deckArea = area.removeFromTop (170).toFloat();
-    area.removeFromTop (12);
+    deckArea = area.removeFromTop (150).toFloat();
+    area.removeFromTop (10);
 
-    const int rowH = area.getHeight() / 2;
-    for (int row = 0; row < 2; ++row)
+    auto layoutRow = [] (juce::Rectangle<int> r, std::initializer_list<Knob*> knobs)
     {
-        auto r = area.removeFromTop (rowH);
-        const int w = r.getWidth() / 5;
-        for (int i = 0; i < 5; ++i)
+        const int w = r.getWidth() / (int) knobs.size();
+        for (auto* k : knobs)
         {
             auto cell = r.removeFromLeft (w);
-            auto& k = knobs[(size_t) (row * 5 + i)];
-            k.label.setBounds (cell.removeFromTop (16));
-            k.slider.setBounds (cell.reduced (8, 0));
+            k->label.setBounds (cell.removeFromTop (16));
+            k->slider.setBounds (cell.reduced (8, 0));
         }
+    };
+
+    // deux panneaux côte à côte
+    auto linesArea = area.removeFromTop (150);
+    for (int l = 0; l < FrippertronProcessor::numLines; ++l)
+    {
+        auto& ui = lineUI[(size_t) l];
+        ui.panel = l == 0 ? linesArea.removeFromLeft ((linesArea.getWidth() - 10) / 2) : linesArea;
+        if (l == 0) linesArea.removeFromLeft (10);
+
+        auto inner = ui.panel.reduced (6, 4);
+        auto header = inner.removeFromTop (24);
+        ui.sync.setBounds (header.removeFromRight (70).reduced (0, 1));
+        layoutRow (inner, { &ui.time, &ui.feedback, &ui.pan, &ui.motion });
+        ui.length.label.setBounds (ui.time.label.getBounds());
+        ui.length.slider.setBounds (ui.time.slider.getBounds());
     }
 
-    lengthKnob.label.setBounds (knobs[0].label.getBounds());
-    lengthKnob.slider.setBounds (knobs[0].slider.getBounds());
+    area.removeFromTop (10);
+    layoutRow (area, { &globalKnobs[0], &globalKnobs[1], &globalKnobs[2], &globalKnobs[3],
+                       &globalKnobs[4], &globalKnobs[5], &globalKnobs[6], &globalKnobs[7] });
 }
