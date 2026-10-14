@@ -7,6 +7,14 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 
 Le numéro se change dans `CMakeLists.txt` (`project(Frippertron VERSION …)`). Il s'affiche sous le titre du plugin.
 
+## [2.1.0] — 2026-10-14
+
+### Ajouté
+- **1 REVOX / 2 REVOX** : en 1 REVOX, la ligne B suit la durée, la synchro et la réinjection de A (une seule machine, en stéréo). Ses réglages sont grisés ; son pan et son pan automatique restent libres.
+
+### Modifié
+- Le preset **Classic Revox** utilise 1 REVOX, en stéréo large (A à gauche, B à droite).
+
 ## [2.0.0] — 2026-10-14
 
 Version majeure : les paramètres ont été renommés, les projets et presets de la v1 ne sont pas relus.

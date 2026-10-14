@@ -2,7 +2,7 @@
 
 Plugin d'effet (VST3 / AU / application autonome) pour macOS, qui reprend le principe des **Frippertronics** de Robert Fripp. Le dispositif d'origine relie deux magnétophones Revox par une même bande. La machine A enregistre. La machine B, placée à distance, relit la bande et renvoie le signal à l'entrée de A. Le son se superpose ainsi en couches qui s'effacent peu à peu.
 
-Frippertron dispose de **deux lignes** de ce type (A et B). Chacune a sa propre longueur de boucle : deux boucles de durées différentes se décalent sans cesse l'une par rapport à l'autre.
+Frippertron dispose de **deux lignes** de ce type (A et B). En mode **2 REVOX**, chacune a sa propre longueur de boucle : deux boucles de durées différentes se décalent sans cesse l'une par rapport à l'autre. En mode **1 REVOX**, B suit A : on retrouve la machine unique de Fripp, en stéréo.
 
 ![Interface de Frippertron](docs/screenshot.png)
 
@@ -24,6 +24,7 @@ Frippertron dispose de **deux lignes** de ce type (A et B). Chacune a sa propre 
 
 | Réglage | Rôle |
 |---|---|
+| **1 REVOX / 2 REVOX** | *1 REVOX* : la ligne B prend la durée, la synchro et la réinjection de A (ses réglages sont grisés) ; seuls son pan et son pan automatique restent libres, pour la largeur stéréo. *2 REVOX* : les deux lignes sont indépendantes. |
 | **Routage** | *Stereo* : entrée gauche → A, droite → B. *Mono → A*, *Mono → B*, *Mono → A+B* : la somme des deux entrées va vers une ligne ou les deux. Avec une source mono, *Stereo* et *Mono → A+B* reviennent au même. |
 | **Rec Level** | Niveau d'entrée enregistré sur la bande. |
 | **Mix** | Dosage entre le signal direct et la bande. À 50 %, les deux sont à plein niveau. En départ d'effet (send), mettre 100 %. |
@@ -66,7 +67,7 @@ cmake --build build --config Release --target FrippertronTests
 build/FrippertronTests_artefacts/Release/FrippertronTests
 ```
 
-Les tests envoient des impulsions dans le plugin et vérifient où tombent les échos : routage, réinjection, REHEARSE, ERASE, HOLD, SYNC, pan automatique, stabilité à 100 % de réinjection, presets. `FrippertronTests --snapshot fichier.png` enregistre une capture de l'interface.
+Les tests envoient des impulsions dans le plugin et vérifient où tombent les échos : routage, réinjection, REHEARSE, ERASE, HOLD, SYNC, pan automatique, stabilité à 100 % de réinjection, mode 1 REVOX, presets. `FrippertronTests --snapshot fichier.png [single]` enregistre une capture de l'interface (en mode 1 REVOX avec `single`).
 
 ## Architecture
 
