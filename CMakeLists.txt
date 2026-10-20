@@ -42,6 +42,7 @@ juce_add_plugin(Frippertron
     PLUGIN_CODE Frpt
     FORMATS ${FRIPPERTRON_FORMATS}
     PRODUCT_NAME "Frippertron"
+    ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/Resources/icon.png"   # FrippertronTests --icon Resources/icon.png
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE

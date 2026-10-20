@@ -99,11 +99,94 @@ namespace
                              return std::pair<float, float> { left ? v : 0.0f, right ? v : 0.0f }; };
     }
     auto silence() { return [] (int) { return std::pair<float, float> { 0.0f, 0.0f }; }; }
+
+    // icône de l'application : une bobine de bande vue de face, sur le fond de l'interface
+    juce::Image drawIcon (int size)
+    {
+        juce::Image img (juce::Image::ARGB, size, size, true);
+        juce::Graphics g (img);
+        const float s = (float) size;
+
+        // carré arrondi, marges au format des icônes macOS (824 / 1024)
+        const auto box = juce::Rectangle<float> (s, s).reduced (s * 100.0f / 1024.0f);
+        const float corner = box.getWidth() * 0.225f;
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff2c2824), box.getX(), box.getY(),
+                                                 juce::Colour (0xff141210), box.getX(), box.getBottom(), false));
+        g.fillRoundedRectangle (box, corner);
+
+        const auto c = box.getCentre().translated (0.0f, -box.getHeight() * 0.04f);
+        const float r = box.getWidth() * 0.33f;
+
+        // bande qui part de la bobine vers la tête d'enregistrement
+        const juce::Point<float> head (box.getX() + box.getWidth() * 0.80f, box.getBottom() - box.getHeight() * 0.12f);
+        juce::Path strand;
+        strand.startNewSubPath (c.x - r * 0.55f, c.y + r * 0.62f);
+        strand.lineTo (head.x - r * 0.12f, head.y);
+        g.setColour (juce::Colour (0xff8a5a36));
+        g.strokePath (strand, juce::PathStrokeType (s * 0.022f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.setColour (juce::Colour (0xffc8452f));
+        g.fillRoundedRectangle (juce::Rectangle<float> (r * 0.30f, r * 0.24f).withCentre (head), r * 0.05f);
+
+        // bande enroulée
+        const float tr = r * 0.80f;
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff70482a), c.x, c.y - tr,
+                                                 juce::Colour (0xff4a2f1b), c.x, c.y + tr, false));
+        g.fillEllipse (c.x - tr, c.y - tr, tr * 2, tr * 2);
+        g.setColour (juce::Colours::black.withAlpha (0.18f));
+        for (float k = 0.48f; k < 0.80f; k += 0.07f)
+            g.drawEllipse (c.x - r * k, c.y - r * k, r * k * 2, r * k * 2, s * 0.003f);
+
+        // flasque métallique et ses trois fenêtres
+        juce::Path flange;
+        flange.addEllipse (c.x - r, c.y - r, r * 2, r * 2);
+        for (int i = 0; i < 3; ++i)
+        {
+            const float a = -juce::MathConstants<float>::halfPi + i * juce::MathConstants<float>::twoPi / 3.0f;
+            juce::Path window;
+            window.addCentredArc (c.x, c.y, r * 0.66f, r * 0.66f, 0.0f, a - 0.62f, a + 0.62f, true);
+            window.addCentredArc (c.x, c.y, r * 0.36f, r * 0.36f, 0.0f, a + 0.62f, a - 0.62f, false);
+            window.closeSubPath();
+            flange.addPath (window);
+        }
+        flange.setUsingNonZeroWinding (false);
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xffd8d2c8), c.x, c.y - r,
+                                                 juce::Colour (0xff6d665e), c.x, c.y + r, false));
+        g.fillPath (flange);
+        g.setColour (juce::Colours::black.withAlpha (0.45f));
+        g.drawEllipse (c.x - r, c.y - r, r * 2, r * 2, s * 0.004f);
+
+        // moyeu
+        const float hr = r * 0.22f;
+        g.setColour (juce::Colour (0xff8a8279));
+        g.fillEllipse (c.x - hr, c.y - hr, hr * 2, hr * 2);
+        g.setColour (juce::Colour (0xff1e1b18));
+        for (int i = 0; i < 3; ++i)
+        {
+            const auto h = c.getPointOnCircumference (hr * 0.55f, i * juce::MathConstants<float>::twoPi / 3.0f);
+            g.fillEllipse (h.x - hr * 0.22f, h.y - hr * 0.22f, hr * 0.44f, hr * 0.44f);
+        }
+        g.fillEllipse (c.x - hr * 0.16f, c.y - hr * 0.16f, hr * 0.32f, hr * 0.32f);
+
+        // point ambre : le son qui circule
+        g.setColour (juce::Colour (0xffe0a040));
+        const auto dot = c.getPointOnCircumference (r * 1.0f, juce::MathConstants<float>::pi * 0.25f);
+        g.fillEllipse (dot.x - r * 0.07f, dot.y - r * 0.07f, r * 0.14f, r * 0.14f);
+        return img;
+    }
 }
 
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI juce;
+
+    // FrippertronTests --icon fichier.png : dessine l'icône 1024 × 1024 de l'application
+    if (argc > 2 && juce::String (argv[1]) == "--icon")
+    {
+        juce::File out (juce::File::getCurrentWorkingDirectory().getChildFile (argv[2]));
+        out.deleteFile();
+        juce::FileOutputStream stream (out);
+        return juce::PNGImageFormat().writeImageToStream (drawIcon (1024), stream) ? 0 : 1;
+    }
 
     // FrippertronTests --snapshot fichier.png [single] : capture de l'interface, sans lancer les tests
     if (argc > 2 && juce::String (argv[1]) == "--snapshot")

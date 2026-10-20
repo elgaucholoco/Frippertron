@@ -6,7 +6,7 @@ Frippertron dispose de **deux lignes** de ce type (A et B). En mode **2 REVOX**,
 
 ![Interface de Frippertron](docs/screenshot.png)
 
-**Télécharger :** [dernière version](https://github.com/elgaucholoco/Frippertron/releases/latest)
+**Télécharger :** [dernière version](https://github.com/elgaucholoco/Frippertron/releases/latest) pour Mac (VST3, AU, application autonome) et Windows (VST3, application autonome).
 
 ## Réglages
 
@@ -40,6 +40,12 @@ Frippertron dispose de **deux lignes** de ce type (A et B). En mode **2 REVOX**,
 
 Le métronome visuel (un voyant par temps, le premier en rouge) suit le logiciel audio quand il joue.
 
+## Installer
+
+**Mac :** décompresser, copier `Frippertron.vst3` dans `~/Library/Audio/Plug-Ins/VST3/` et `Frippertron.component` dans `~/Library/Audio/Plug-Ins/Components/`. Le plugin n'étant pas notarisé, le débloquer une fois avec `xattr -cr` sur chacun (voir les notes de version).
+
+**Windows :** décompresser et copier le dossier `Frippertron.vst3` dans `C:\Program Files\Common Files\VST3\`, puis relancer le scan des plugins. L'application autonome n'est pas signée : au premier lancement, Windows affiche « Windows a protégé votre ordinateur » → *Informations complémentaires* → *Exécuter quand même*.
+
 ## Compiler sur Mac
 
 Prérequis :
@@ -59,6 +65,17 @@ Le binaire est universel (Apple Silicon et Intel), compatible macOS 11 et plus.
 
 Si le plugin n'apparaît pas dans le logiciel audio, relance un scan des plugins. Il est rangé sous le fabricant **Carlos**. Pour Logic, valide l'AU avec `auval -v aufx Frpt Crls`.
 
+## Compiler sur Windows
+
+Avec Visual Studio 2022 (charge de travail « Développement Desktop en C++ ») et CMake :
+
+```bash
+cmake -B build
+cmake --build build --config Release
+```
+
+Le VST3 se trouve dans `build/Frippertron_artefacts/Release/VST3/`. À chaque pull request, GitHub Actions compile et teste le plugin sur Mac et Windows ; à chaque release publiée, les fichiers Windows y sont ajoutés automatiquement.
+
 ### Tests
 
 ```bash
@@ -67,7 +84,7 @@ cmake --build build --config Release --target FrippertronTests
 build/FrippertronTests_artefacts/Release/FrippertronTests
 ```
 
-Les tests envoient des impulsions dans le plugin et vérifient où tombent les échos : routage, réinjection, REHEARSE, ERASE, HOLD, SYNC, pan automatique, stabilité à 100 % de réinjection, mode 1 REVOX, presets. `FrippertronTests --snapshot fichier.png [single]` enregistre une capture de l'interface (en mode 1 REVOX avec `single`).
+Les tests envoient des impulsions dans le plugin et vérifient où tombent les échos : routage, réinjection, REHEARSE, ERASE, HOLD, SYNC, pan automatique, stabilité à 100 % de réinjection, mode 1 REVOX, presets. `FrippertronTests --snapshot fichier.png [single]` enregistre une capture de l'interface (en mode 1 REVOX avec `single`) ; `FrippertronTests --icon Resources/icon.png` redessine l'icône de l'application.
 
 ## Architecture
 
@@ -76,3 +93,9 @@ Les tests envoient des impulsions dans le plugin et vérifient où tombent les �
 - `Tests/ProcessorTests.cpp` : tests hors ligne (cible optionnelle).
 
 Historique des versions : [CHANGELOG.md](CHANGELOG.md).
+
+## Licence
+
+Frippertron est un logiciel libre, distribué sous licence [GNU AGPLv3](LICENSE) : vous pouvez l'utiliser, le modifier et le redistribuer, à condition de publier vos modifications sous la même licence. Il repose sur le framework [JUCE](https://juce.com), lui-même distribué sous AGPLv3.
+
+VST est une marque déposée de Steinberg Media Technologies GmbH.

@@ -7,6 +7,17 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Numérotation
 
 Le numéro se change dans `CMakeLists.txt` (`project(Frippertron VERSION …)`). Il s'affiche sous le titre du plugin.
 
+## [2.2.0] — 2026-10-20
+
+### Ajouté
+- **Version Windows** : VST3 et application autonome.
+- **Compilation automatique** sur GitHub Actions (Mac et Windows) : compilation, tests et `auval` à chaque pull request ; fichiers Windows ajoutés automatiquement à chaque release.
+- **Icône** de l'application autonome : une bobine de bande dans le style de l'interface (#5).
+- **Licence** GNU AGPLv3, cohérente avec celle de JUCE 8 (#4).
+
+### Technique
+- CMake : `/utf-8` pour le compilateur Microsoft, AU seulement sur Mac, option `FRIPPERTRON_COPY_PLUGIN`.
+
 ## [2.1.0] — 2026-10-14
 
 ### Ajouté
