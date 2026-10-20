@@ -46,19 +46,19 @@ static const std::vector<Preset>& factoryPresets()
 {
     static const std::vector<Preset> presets {
         { "Init", {} },
-        { "Classic Revox",     { { "decks", 0 }, { "a_time", 4.0f }, { "a_feedback", 0.9f },
+        { "Classic Revox",     { { "decks", 0.0f }, { "a_time", 4.0f }, { "a_feedback", 0.9f },
                                  { "a_pan", -1.0f }, { "b_pan", 1.0f },
                                  { "tone", 6000.0f }, { "wow", 0.3f } } },
-        { "Two Revox Drift",   { { "routing", 3 }, { "a_time", 4.0f }, { "b_time", 5.3f },
+        { "Two Revox Drift",   { { "routing", 3.0f }, { "a_time", 4.0f }, { "b_time", 5.3f },
                                  { "a_pan", -0.8f }, { "b_pan", 0.8f }, { "a_feedback", 0.88f }, { "b_feedback", 0.88f } } },
-        { "Polymeter 4:5",     { { "routing", 3 }, { "a_sync", 1 }, { "b_sync", 1 }, { "a_length", 5 }, { "b_length", 6 },
+        { "Polymeter 4:5",     { { "routing", 3.0f }, { "a_sync", 1.0f }, { "b_sync", 1.0f }, { "a_length", 5.0f }, { "b_length", 6.0f },
                                  { "a_pan", -0.6f }, { "b_pan", 0.6f } } },
-        { "Swirl",             { { "routing", 3 }, { "a_time", 6.0f }, { "b_time", 7.5f }, { "a_motion", 3 }, { "b_motion", 4 },
+        { "Swirl",             { { "routing", 3.0f }, { "a_time", 6.0f }, { "b_time", 7.5f }, { "a_motion", 3.0f }, { "b_motion", 4.0f },
                                  { "a_pan", -0.9f }, { "b_pan", 0.9f }, { "a_feedback", 0.9f }, { "b_feedback", 0.9f },
                                  { "wow", 0.4f } } },
         { "Worn Tape",         { { "tone", 2500.0f }, { "saturation", 0.7f }, { "hiss", 0.5f }, { "wow", 0.5f },
                                  { "flutter", 0.3f }, { "a_feedback", 0.93f }, { "b_feedback", 0.93f } } },
-        { "Long Ambient",      { { "routing", 3 }, { "a_time", 30.0f }, { "b_time", 41.0f }, { "a_feedback", 0.95f },
+        { "Long Ambient",      { { "routing", 3.0f }, { "a_time", 30.0f }, { "b_time", 41.0f }, { "a_feedback", 0.95f },
                                  { "b_feedback", 0.95f }, { "tone", 5000.0f }, { "hiss", 0.3f }, { "mix", 0.6f } } },
     };
     return presets;
