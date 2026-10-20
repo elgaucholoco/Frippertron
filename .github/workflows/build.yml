@@ -1,0 +1,74 @@
+# Compile et teste Frippertron sur Mac et Windows.
+# - à chaque pull request et à chaque push sur main : compilation + tests ;
+# - à chaque release publiée : les fichiers Windows sont ajoutés à la release
+#   (les fichiers Mac sont compilés et publiés depuis le Mac, voir CLAUDE.md).
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-2022]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurer
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DFRIPPERTRON_TESTS=ON -DFRIPPERTRON_COPY_PLUGIN=OFF
+
+      - name: Compiler
+        run: cmake --build build --config Release --parallel 4
+
+      - name: Tests hors ligne (Mac)
+        if: runner.os == 'macOS'
+        run: build/FrippertronTests_artefacts/Release/FrippertronTests
+
+      - name: Tests hors ligne (Windows)
+        if: runner.os == 'Windows'
+        run: build\FrippertronTests_artefacts\Release\FrippertronTests.exe
+
+      - name: Validation AU (Mac)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R build/Frippertron_artefacts/Release/AU/Frippertron.component ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar || true
+          auval -v aufx Frpt Crls
+
+      - name: Préparer les fichiers Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path CMakeLists.txt -Pattern 'project\(Frippertron VERSION ([0-9.]+)\)').Matches[0].Groups[1].Value
+          $r = "build/Frippertron_artefacts/Release"
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path "$r/VST3/Frippertron.vst3" -DestinationPath "dist/Frippertron-$v-Windows-VST3.zip"
+          Compress-Archive -Path "$r/Standalone/Frippertron.exe" -DestinationPath "dist/Frippertron-$v-Windows-Standalone.zip"
+          Get-ChildItem dist
+
+      - name: Conserver les fichiers Windows
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Frippertron-Windows
+          path: dist/*.zip
+
+      - name: Ajouter les fichiers Windows à la release
+        if: runner.os == 'Windows' && github.event_name == 'release'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" (Get-ChildItem dist/*.zip) --clobber --repo "${{ github.repository }}"
